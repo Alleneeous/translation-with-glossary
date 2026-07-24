@@ -50,173 +50,329 @@ st.set_page_config(
 # ---------------------------------------------------------------------------
 st.markdown("""
 <style>
-/* ===== Global ===== */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+/* ===== Fonts (Claude uses Copernicus for headings; Instrument Serif is the closest free match) ===== */
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap');
 
+/* ===== Base ===== */
 html, body, [class*="css"] {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-    color: #2D2A26;
+    color: #3D3929;
 }
 
-/* ===== Hero Banner ===== */
-.hero-banner {
-    background: #FFFFFF;
-    padding: 2rem 2.5rem;
-    border-radius: 12px;
-    margin-bottom: 1.5rem;
-    text-align: center;
-    border: 1px solid #EBE7E1;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+.stApp {
+    background: #F5F4EE;
 }
-.hero-banner h1 {
-    color: #2D2A26 !important;
-    font-size: 2.2rem;
-    font-weight: 600;
+
+/* ===== Center content, cap width like claude.ai ===== */
+.main .block-container {
+    max-width: 880px;
+    padding-top: 2.5rem;
+    padding-bottom: 3rem;
+}
+
+/* ===== Hero (serif title, no card chrome) ===== */
+.hero-wrap {
+    text-align: center;
+    padding: 1rem 0 0.5rem 0;
+    margin-bottom: 2rem;
+}
+.hero-title {
+    font-family: 'Instrument Serif', 'Iowan Old Style', Georgia, serif;
+    font-size: 3.4rem;
+    color: #3D3929;
     margin: 0;
     padding: 0;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
+    font-weight: 400;
+    line-height: 1.05;
 }
-.hero-banner p {
-    color: #6B625A !important;
-    font-size: 1.05rem;
-    margin: 0.4rem 0 0 0;
+.hero-subtitle {
+    color: #87857A;
+    font-size: 1rem;
+    margin: 0.75rem 0 0 0;
+    font-weight: 400;
 }
 .steps-row {
     display: flex;
     justify-content: center;
-    gap: 1.5rem;
-    margin-top: 1.25rem;
+    gap: 2rem;
+    margin: 1.5rem 0 0 0;
+    font-size: 0.85rem;
+    color: #87857A;
+    flex-wrap: wrap;
 }
-.step-badge {
-    background: #FAF8F5;
-    border: 1px solid #EBE7E1;
-    border-radius: 8px;
-    padding: 0.5rem 1.25rem;
-    color: #6B625A;
+.step-item {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+}
+.step-item .step-num {
+    font-family: 'Instrument Serif', Georgia, serif;
+    color: #D97757;
+    font-size: 1.05rem;
     font-weight: 500;
-    font-size: 0.9rem;
-}
-.step-badge .step-num {
-    display: inline-block;
-    width: 24px;
-    height: 24px;
-    line-height: 24px;
-    border-radius: 50%;
-    background: #C77D4F;
-    color: #FFFFFF;
-    text-align: center;
-    margin-right: 6px;
-    font-weight: 600;
-    font-size: 0.8rem;
+    font-style: italic;
 }
 
-/* ===== Cards ===== */
+/* ===== Section cards (borderless-feel, subtle) ===== */
 .settings-card {
-    background: #FFFFFF;
-    border: 1px solid #EBE7E1;
+    background: #FAF9F5;
+    border: 1px solid #EDE9DE;
     border-radius: 12px;
     padding: 1.5rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     margin-bottom: 1rem;
 }
 .settings-card h3 {
-    margin-top: 0;
-    font-size: 1.05rem;
-    color: #2D2A26;
-    border-bottom: 1px solid #EBE7E1;
-    padding-bottom: 0.75rem;
-    margin-bottom: 1rem;
-    font-weight: 600;
+    margin: 0 0 1rem 0 !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 0.75rem !important;
+    color: #87857A !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.1em !important;
+    font-weight: 600 !important;
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
 }
 
-/* ===== File Uploader Override ===== */
+/* ===== File uploader ===== */
 [data-testid="stFileUploader"] {
-    border: 2px dashed #D9D2C7 !important;
+    border: 1.5px dashed #D9D3C4 !important;
     border-radius: 10px !important;
-    padding: 1.25rem !important;
+    padding: 1rem !important;
+    background: #FDFCF9 !important;
     transition: border-color 0.2s, background 0.2s;
 }
 [data-testid="stFileUploader"]:hover {
-    border-color: #C77D4F !important;
-    background: #FDFCFB;
+    border-color: #D97757 !important;
+    background: #FBF7F2 !important;
 }
-
-/* ===== Buttons ===== */
-.stButton > button {
+[data-testid="stFileUploader"] section > button {
+    background: #FFFFFF !important;
+    border: 1px solid #E5E1D5 !important;
+    color: #3D3929 !important;
     border-radius: 8px !important;
     font-weight: 500 !important;
-    transition: all 0.2s ease !important;
-    padding: 0.5rem 1.25rem !important;
 }
-.stButton > button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(199, 125, 79, 0.25);
+[data-testid="stFileUploader"] section > button:hover {
+    background: #F5F4EE !important;
+    border-color: #D97757 !important;
 }
 
-/* Primary button */
+/* ===== Buttons — secondary/default ===== */
+.stButton > button {
+    border-radius: 10px !important;
+    font-weight: 500 !important;
+    transition: background 0.15s ease, border-color 0.15s ease !important;
+    padding: 0.55rem 1.4rem !important;
+    border: 1px solid #E5E1D5 !important;
+    background: #FFFFFF !important;
+    color: #3D3929 !important;
+    box-shadow: none !important;
+}
+.stButton > button:hover {
+    background: #F5F4EE !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Primary button — Claude copper */
 .stButton > button[kind="primary"] {
-    background: #C77D4F !important;
-    border: 1px solid #B86D3F !important;
+    background: #D97757 !important;
+    border: 1px solid #C7683F !important;
     color: #FFFFFF !important;
-    font-size: 1rem !important;
+    font-size: 0.95rem !important;
 }
 .stButton > button[kind="primary"]:hover {
-    background: #B86D3F !important;
+    background: #C7683F !important;
+    border-color: #B85C34 !important;
+}
+
+/* Disabled */
+.stButton > button:disabled {
+    background: #EDE9DE !important;
+    border-color: #EDE9DE !important;
+    color: #B5B0A3 !important;
+    cursor: not-allowed !important;
 }
 
 /* Download button */
 .stDownloadButton > button {
-    border-radius: 8px !important;
+    border-radius: 10px !important;
     font-weight: 500 !important;
-    background: #C77D4F !important;
-    border: 1px solid #B86D3F !important;
+    background: #D97757 !important;
+    border: 1px solid #C7683F !important;
     color: #FFFFFF !important;
-    transition: all 0.2s ease !important;
+    transition: background 0.15s ease !important;
+    padding: 0.55rem 1.4rem !important;
+}
+.stDownloadButton > button:hover {
+    background: #C7683F !important;
+    border-color: #B85C34 !important;
+    box-shadow: none !important;
+    transform: none !important;
 }
 
-/* ===== Metrics ===== */
+/* ===== Metrics — serif value, all-caps small label ===== */
 [data-testid="stMetric"] {
-    background: #FAF8F5;
-    border-radius: 8px;
-    padding: 0.75rem;
-    border: 1px solid #EBE7E1;
+    background: #FAF9F5;
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    border: 1px solid #EDE9DE;
 }
 [data-testid="stMetricValue"] {
-    color: #C77D4F !important;
+    color: #D97757 !important;
+    font-family: 'Instrument Serif', Georgia, serif !important;
+    font-size: 2rem !important;
+    font-weight: 400 !important;
+    line-height: 1.1 !important;
+}
+[data-testid="stMetricLabel"] {
+    color: #87857A !important;
+    font-size: 0.72rem !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    font-weight: 500 !important;
 }
 
 /* ===== Text areas ===== */
 .stTextArea textarea {
-    border-radius: 8px !important;
-    border: 1px solid #EBE7E1 !important;
-    background: #FDFCFB;
+    border-radius: 10px !important;
+    border: 1px solid #EDE9DE !important;
+    background: #FFFFFF !important;
+    font-family: 'Inter', sans-serif !important;
+    padding: 0.75rem !important;
+    color: #3D3929 !important;
+    box-shadow: none !important;
+}
+.stTextArea textarea:focus {
+    border-color: #D97757 !important;
+    box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.15) !important;
 }
 
-/* ===== Select / Radio / Input ===== */
-.stSelectbox [data-baseweb="select"] > div,
+/* ===== Text input ===== */
 .stTextInput input {
-    border-radius: 8px !important;
-    border-color: #EBE7E1 !important;
+    border-radius: 10px !important;
+    border: 1px solid #EDE9DE !important;
+    background: #FFFFFF !important;
+    padding: 0.55rem 0.85rem !important;
+    color: #3D3929 !important;
+    box-shadow: none !important;
+}
+.stTextInput input:focus {
+    border-color: #D97757 !important;
+    box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.15) !important;
+}
+
+/* ===== Select ===== */
+.stSelectbox [data-baseweb="select"] > div {
+    border-radius: 10px !important;
+    border-color: #EDE9DE !important;
+    background: #FFFFFF !important;
+}
+.stSelectbox [data-baseweb="select"] > div:hover {
+    border-color: #D97757 !important;
+}
+
+/* ===== Radio ===== */
+.stRadio > div {
+    gap: 0.5rem !important;
 }
 .stRadio [data-testid="stMarkdownContainer"] p {
     font-weight: 500;
+    color: #3D3929;
 }
 
 /* ===== Progress bar ===== */
 .stProgress > div > div {
-    background: #C77D4F;
+    background: #D97757 !important;
+    border-radius: 4px;
+}
+.stProgress > div {
+    background: #EDE9DE !important;
     border-radius: 4px;
 }
 
 /* ===== Expander ===== */
 [data-testid="stExpander"] {
-    border-radius: 8px !important;
-    border: 1px solid #EBE7E1 !important;
+    border-radius: 10px !important;
+    border: 1px solid #EDE9DE !important;
+    background: #FAF9F5 !important;
+    box-shadow: none !important;
+}
+[data-testid="stExpander"] summary {
+    color: #3D3929 !important;
+    font-weight: 500 !important;
+}
+[data-testid="stExpander"] summary:hover {
+    color: #D97757 !important;
 }
 
-/* ===== Info callout ===== */
+/* ===== Info / warning callouts ===== */
 div[data-testid="stNotification"] {
-    border-radius: 8px !important;
+    border-radius: 10px !important;
+    border: 1px solid #EDE9DE !important;
+    background: #FAF9F5 !important;
+    color: #3D3929 !important;
+}
+
+/* ===== Status widget ===== */
+[data-testid="stStatusWidget"], .stStatus {
+    border-radius: 10px !important;
+    border: 1px solid #EDE9DE !important;
+    background: #FAF9F5 !important;
+}
+
+/* ===== Divider ===== */
+hr {
+    border-color: #EDE9DE !important;
+    margin: 2rem 0 !important;
+}
+
+/* ===== Tabs — underline style like claude.ai ===== */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 0.5rem;
+    border-bottom: 1px solid #EDE9DE;
+    background: transparent !important;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 0 !important;
+    padding: 0.6rem 0.75rem !important;
+    font-weight: 500;
+    color: #87857A !important;
+    background: transparent !important;
+    border-bottom: 2px solid transparent !important;
+    margin-bottom: -1px !important;
+}
+.stTabs [aria-selected="true"] {
+    color: #D97757 !important;
+    border-bottom: 2px solid #D97757 !important;
+    background: transparent !important;
+}
+
+/* ===== Dataframe ===== */
+[data-testid="stDataFrame"] {
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid #EDE9DE;
+}
+
+/* ===== Caption ===== */
+[data-testid="stCaptionContainer"], .stCaption {
+    color: #87857A !important;
+    font-size: 0.85rem !important;
+}
+
+/* ===== Headings ===== */
+h2, h3, h4 {
+    color: #3D3929 !important;
+    font-weight: 500 !important;
+}
+h2 {
+    font-family: 'Instrument Serif', 'Iowan Old Style', Georgia, serif !important;
+    font-weight: 400 !important;
+    font-size: 1.9rem !important;
+    letter-spacing: -0.01em !important;
+    margin-top: 2rem !important;
 }
 
 /* ===== Hide sidebar default ===== */
@@ -227,22 +383,18 @@ div[data-testid="stNotification"] {
 /* ===== Footer ===== */
 .app-footer {
     text-align: center;
-    color: #A39688;
-    font-size: 0.85rem;
-    padding: 2rem 0 1rem 0;
-    border-top: 1px solid #EBE7E1;
+    color: #A39B8B;
+    font-size: 0.8rem;
+    padding: 2.5rem 0 1rem 0;
     margin-top: 3rem;
+    font-family: 'Instrument Serif', Georgia, serif;
+    font-style: italic;
 }
 
-/* ===== Tab styling ===== */
-.stTabs [data-baseweb="tab-list"] {
-    gap: 0.25rem;
-}
-.stTabs [data-baseweb="tab"] {
-    border-radius: 8px 8px 0 0;
-    padding: 0.5rem 1rem;
-    font-weight: 500;
-}
+/* Remove default streamlit deploy button and menu clutter */
+.stDeployButton { display: none !important; }
+#MainMenu { visibility: hidden; }
+header { background: transparent !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -250,13 +402,13 @@ div[data-testid="stNotification"] {
 # Hero Section
 # ---------------------------------------------------------------------------
 st.markdown("""
-<div class="hero-banner">
-    <h1>⚖️ TransLegal</h1>
-    <p>上传文档 → AI 自动匹配术语并翻译 → 下载术语一致的译文</p>
+<div class="hero-wrap">
+    <h1 class="hero-title">⚖️ TransLegal</h1>
+    <p class="hero-subtitle">上传文档 · AI 匹配术语并翻译 · 下载术语一致的译文</p>
     <div class="steps-row">
-        <div class="step-badge"><span class="step-num">1</span> 上传文档 & 术语表</div>
-        <div class="step-badge"><span class="step-num">2</span> 选择翻译选项</div>
-        <div class="step-badge"><span class="step-num">3</span> 下载译文</div>
+        <div class="step-item"><span class="step-num">01</span> 上传文档 & 术语表</div>
+        <div class="step-item"><span class="step-num">02</span> 选择翻译选项</div>
+        <div class="step-item"><span class="step-num">03</span> 下载译文</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
