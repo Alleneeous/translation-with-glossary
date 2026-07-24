@@ -695,10 +695,21 @@ def translate_text(
 # Translation execution
 # ---------------------------------------------------------------------------
 if translate_clicked:
+    if doc_file is None:
+        st.error("文档已丢失，请重新上传后再点开始翻译。")
+        st.stop()
+
+    # Capture bytes and name eagerly. On some Streamlit rerun paths the
+    # uploader reference can go stale mid-execution — reading once up front
+    # avoids the "'NoneType' object has no attribute 'getvalue'" trap.
+    doc_bytes = doc_file.getvalue()
+    doc_name = doc_file.name
+    glossary_bytes = glossary_file.getvalue() if glossary_file else None
+
     # --- Step 1: Extract text ---
     with st.status("提取文档文本…", expanded=True) as status:
         st.write("正在读取文档…")
-        source_text = extract_text(doc_file.getvalue(), doc_file.name)
+        source_text = extract_text(doc_bytes, doc_name)
         st.write(f"提取完成，共 **{len(source_text):,}** 字符")
 
         if not source_text.strip():
@@ -708,10 +719,10 @@ if translate_clicked:
         # --- Step 2: Load glossary & protect terms ---
         use_glossary = False
         glossary_data = None
-        if glossary_file:
+        if glossary_bytes is not None:
             st.write("加载用户术语表…")
             with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
-                tmp.write(glossary_file.getvalue())
+                tmp.write(glossary_bytes)
                 glossary_path = tmp.name
             glossary_data = load_glossary(glossary_path)
             os.unlink(glossary_path)
@@ -780,7 +791,7 @@ if translate_clicked:
             "direction": direction,
             "protected_data": protected_data,
             "glossary_data": glossary_data,
-            "doc_filename": doc_file.name,
+            "doc_filename": doc_name,
         }
 
 # ---------------------------------------------------------------------------
