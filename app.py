@@ -682,7 +682,7 @@ if translate_clicked:
 
         status.update(label="翻译完成！", state="complete")
 
-        st.toast("翻译完成！请查看结果并下载译文。", icon="✓")
+        st.toast("翻译完成！请查看结果并下载译文。", icon=":material/check_circle:")
 
         # --- Step 5: Store in session state for persistent display ---
         st.session_state.translation_result = {
