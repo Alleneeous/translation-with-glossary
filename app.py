@@ -52,13 +52,15 @@ with st.sidebar:
     st.header("⚙️ 设置")
 
     st.subheader("🔑 API Key")
-    api_key = st.text_input(
+    _server_key = os.environ.get("DEEPSEEK_API_KEY", "")
+    api_key_input = st.text_input(
         "DeepSeek API Key",
         type="password",
-        value=os.environ.get("DEEPSEEK_API_KEY", ""),
-        placeholder="sk-...",
-        help="从环境变量自动读取。也可手动填入自己的 Key。",
+        placeholder="已预填，无需修改" if _server_key else "sk-...",
+        help="已从服务器环境变量自动加载。也可填入自己的 Key 覆盖。",
     )
+    # Use server key if user hasn't entered their own
+    effective_key = api_key_input.strip() if api_key_input.strip() else _server_key
 
     st.divider()
 
@@ -244,12 +246,12 @@ def translate_text(
 # ---------------------------------------------------------------------------
 # Translate button
 # ---------------------------------------------------------------------------
-can_translate = doc_file is not None and api_key.strip() != ""
+can_translate = doc_file is not None and effective_key.strip() != ""
 
 if not can_translate:
     if doc_file is None:
         st.warning("👆 请先上传文档")
-    elif not api_key.strip():
+    elif not effective_key.strip():
         st.warning("👆 请在侧边栏填入 API Key")
 
 if st.button(
@@ -305,7 +307,7 @@ if st.button(
         translated = translate_text(
             text_to_translate,
             direction,
-            api_key.strip(),
+            effective_key.strip(),
             model,
             progress_bar,
             status_text,
