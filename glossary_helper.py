@@ -10,7 +10,64 @@ Three subcommands:
 
 import sys
 import json
+import re
 import argparse
+
+
+def _sanitize_entry(src, tgt):
+    """Clean a single glossary row. Returns (src, tgt) or None to skip.
+
+    Cleaning rules:
+    - Skip enumerated series (source contains `/` or `……`): these are template
+      placeholders (e.g. `原告一/原告二/原告三……`), not real matchable terms.
+    - Target with ` / ` (space-slash-space) is an editorial alternative
+      annotation; keep the first alternative only.
+    - Target ending with `(s)`/`(es)` is a plural-note annotation; strip it
+      and let grammar decide singular/plural.
+    - Preserve legitimate parentheticals (company suffixes, English
+      abbreviations, city names): those don't match the strip patterns above.
+    """
+    if "/" in src or "……" in src:
+        return None
+
+    if " / " in tgt:
+        tgt = tgt.split(" / ", 1)[0].strip()
+
+    tgt = re.sub(r"\s*\((?:s|es)\)\s*$", "", tgt).strip()
+
+    if not tgt:
+        return None
+    return src, tgt
+
+
+def sanitize_glossary_dict(data):
+    """Apply _sanitize_entry rules to an already-loaded glossary dict.
+
+    Used when the glossary comes from a pre-serialized JSON blob (e.g. the
+    embedded compressed base64 in app.py) rather than a fresh xlsx load.
+    Mutates and returns `data`.
+    """
+    raw = data.get("glossary", {})
+    clean = {}
+    cleaned = 0
+    skipped = 0
+    for src, tgt in raw.items():
+        sanitized = _sanitize_entry(src, tgt)
+        if sanitized is None:
+            skipped += 1
+            continue
+        clean_src, clean_tgt = sanitized
+        if clean_tgt != tgt:
+            cleaned += 1
+        clean[clean_src] = clean_tgt
+
+    data["glossary"] = clean
+    data["sorted_sources"] = sorted(clean.keys(), key=len, reverse=True)
+    data["raw_count"] = len(raw)
+    data["cleaned_count"] = cleaned
+    data["skipped_count"] = skipped
+    data["count"] = len(clean)
+    return data
 
 
 def load_glossary(xlsx_path, output_path=None):
@@ -21,13 +78,27 @@ def load_glossary(xlsx_path, output_path=None):
     ws = wb.active
 
     glossary = {}
+    raw_count = 0
+    cleaned_count = 0
+    skipped_count = 0
     for row in ws.iter_rows(min_row=2, values_only=True):
         src, tgt = row[0], row[1]
-        if src and tgt:
-            src = str(src).strip()
-            tgt = str(tgt).strip()
-            if src and tgt:
-                glossary[src] = tgt
+        if not (src and tgt):
+            continue
+        src = str(src).strip()
+        tgt = str(tgt).strip()
+        if not (src and tgt):
+            continue
+        raw_count += 1
+        original_tgt = tgt
+        sanitized = _sanitize_entry(src, tgt)
+        if sanitized is None:
+            skipped_count += 1
+            continue
+        clean_src, clean_tgt = sanitized
+        if clean_tgt != original_tgt:
+            cleaned_count += 1
+        glossary[clean_src] = clean_tgt
 
     sorted_sources = sorted(glossary.keys(), key=len, reverse=True)
 
@@ -35,6 +106,9 @@ def load_glossary(xlsx_path, output_path=None):
         "glossary": glossary,
         "sorted_sources": sorted_sources,
         "count": len(glossary),
+        "raw_count": raw_count,
+        "cleaned_count": cleaned_count,
+        "skipped_count": skipped_count,
     }
 
     if output_path:
@@ -111,13 +185,13 @@ def protect_terms(text, glossary_json_or_dict, direction="auto"):
 def restore_terms(translated_text, protected_data_or_path):
     """Replace placeholders in translated text with target translations.
 
-    Args:
-        translated_text: translated text string with placeholders
-        protected_data_or_path: either a file path (str) to the protected JSON,
-                               or an already-loaded dict from protect_terms()
-
-    Returns:
-        string with placeholders replaced by target translations
+    Two safety passes on top of the raw replace:
+    1. If the AI wrote the placeholder without a space next to a Latin word
+       (common when the source was CJK-adjacent), insert a space so we don't
+       end up with "PlaintiffShengdike Technology".
+    2. Collapse adjacent duplicate words like "jurisdiction jurisdiction"
+       that arise when a short glossary target (e.g. 管辖 → jurisdiction)
+       collides with the AI's own translation of the surrounding word.
     """
     if isinstance(protected_data_or_path, str):
         with open(protected_data_or_path, "r", encoding="utf-8") as f:
@@ -129,7 +203,36 @@ def restore_terms(translated_text, protected_data_or_path):
 
     result = translated_text
     for placeholder, translation in mapping.items():
-        result = result.replace(placeholder, translation)
+        def _sub(m, _t=translation, _src=result):
+            before_idx = m.start() - 1
+            after_idx = m.end()
+            left = _src[before_idx] if before_idx >= 0 else ""
+            right = _src[after_idx] if after_idx < len(_src) else ""
+            prefix = " " if (left.isalnum() and _t[:1].isalpha()) else ""
+            suffix = " " if (right.isalnum() and _t[-1:].isalpha()) else ""
+            return prefix + _t + suffix
+        result = re.sub(re.escape(placeholder), _sub, result)
+
+    # Dedupe adjacent identical words that are also glossary targets.
+    # These are the cases where a short glossary target (e.g. 管辖 →
+    # jurisdiction) collides with the AI's own natural translation of
+    # a surrounding word. Restricting to glossary targets avoids touching
+    # legit English like "had had" or "that that".
+    target_words = {
+        w.lower()
+        for tgt in mapping.values()
+        for w in re.findall(r"\w+", tgt)
+        if len(w) >= 3
+    }
+    if target_words:
+        def _dedupe(m):
+            return m.group(1) if m.group(1).lower() in target_words else m.group(0)
+        result = re.sub(
+            r"\b(\w{3,})(?:\s+\1)+\b",
+            _dedupe,
+            result,
+            flags=re.IGNORECASE,
+        )
 
     return result
 

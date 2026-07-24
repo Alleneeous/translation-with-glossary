@@ -11,6 +11,7 @@ Your glossary stays on the server — users only see the translated output.
 import streamlit as st
 import tempfile
 import os
+import re
 import base64
 import zlib
 import json
@@ -20,7 +21,12 @@ from docx import Document
 import pdfplumber
 
 # Import the glossary helper (must be in the same directory)
-from glossary_helper import load_glossary, protect_terms, restore_terms
+from glossary_helper import (
+    load_glossary,
+    protect_terms,
+    restore_terms,
+    sanitize_glossary_dict,
+)
 
 # ---------------------------------------------------------------------------
 # Embedded glossary (compressed & base64-encoded — not readable by humans)
@@ -30,10 +36,16 @@ _EMBEDDED_GLOSSARY_B64 = """eJy1W1lzFFeW/isZPEHExRjc4Wb8hmHcjcN2KKCfZmJiIpWVpUqo
 
 
 def _decode_embedded_glossary():
-    """Decode the embedded glossary from compressed base64."""
+    """Decode the embedded glossary from compressed base64.
+
+    Applies the same sanitization as fresh xlsx loads so both paths behave
+    identically (strips X/Y editorial alternatives, trailing (s) notes, and
+    enumerated placeholder rows).
+    """
     compressed = base64.b64decode(_EMBEDDED_GLOSSARY_B64)
     json_str = zlib.decompress(compressed).decode("utf-8")
-    return json.loads(json_str)
+    data = json.loads(json_str)
+    return sanitize_glossary_dict(data)
 
 # ---------------------------------------------------------------------------
 # Page config
@@ -452,7 +464,10 @@ with col_right:
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Hidden tip
-    st.caption("术语表文件不上传时，内置术语表（210条）将自动使用。")
+    _embedded_preview = _decode_embedded_glossary()
+    st.caption(
+        f"术语表文件不上传时，内置术语表（{_embedded_preview['count']} 条）将自动使用。"
+    )
 
 with col_left:
     st.markdown('<div class="settings-card">', unsafe_allow_html=True)
@@ -501,6 +516,50 @@ with col_left:
 # ---------------------------------------------------------------------------
 # Translation logic
 # ---------------------------------------------------------------------------
+_PAGE_FOOTER_RE = re.compile(
+    r"^\s*(?:[-–—]\s*\d+\s*[-–—]|第\s*\d+\s*页(?:\s*(?:共|/)\s*\d+\s*页)?)\s*$",
+    re.MULTILINE,
+)
+_MULTI_BLANK_RE = re.compile(r"\n\s*\n\s*\n+")
+
+# Punctuation that legitimately ends a line in CJK/Latin. If a PDF line ends
+# with one of these, we treat the line break as real; otherwise it's likely
+# a mid-sentence wrap and we join with the next line.
+_LINE_END_PUNCT = set("。！？；：.!?;:）)】」』】\"”’…—")
+_LINE_START_MARKERS = re.compile(
+    r"^\s*(?:[一二三四五六七八九十]+[、.．]|\d+[、.．)]|（\d+）|\(\d+\)|[①②③④⑤⑥⑦⑧⑨⑩]|[IVX]+[\.\)]|第[一二三四五六七八九十百千0-9]+[条章节款项])",
+)
+
+
+def clean_extracted_text(text: str, suffix: str) -> str:
+    """Post-process raw extracted text to remove page-level artifacts.
+
+    - Strip standalone page footers like "- 1 -" and "第 3 页 共 7 页".
+    - For PDFs, join mid-sentence line wraps back into paragraphs.
+    - Collapse runs of 3+ blank lines down to a single blank line.
+    """
+    text = _PAGE_FOOTER_RE.sub("", text)
+
+    if suffix == ".pdf":
+        merged_lines = []
+        for line in text.split("\n"):
+            stripped = line.rstrip()
+            if (
+                merged_lines
+                and merged_lines[-1]
+                and merged_lines[-1][-1] not in _LINE_END_PUNCT
+                and stripped
+                and not _LINE_START_MARKERS.match(stripped)
+            ):
+                merged_lines[-1] = merged_lines[-1] + stripped.lstrip()
+            else:
+                merged_lines.append(stripped)
+        text = "\n".join(merged_lines)
+
+    text = _MULTI_BLANK_RE.sub("\n\n", text)
+    return text.strip()
+
+
 def extract_text(file_bytes: bytes, filename: str) -> str:
     """Extract text from .docx or .pdf file bytes."""
     suffix = Path(filename).suffix.lower()
@@ -520,7 +579,7 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
     finally:
         os.unlink(tmp_path)
 
-    return text
+    return clean_extracted_text(text, suffix)
 
 
 def chunk_text(text: str, max_chars: int = 6000) -> list[str]:
@@ -563,27 +622,48 @@ def translate_text(
     )
 
     if direction == "cn2en":
-        lang_instruction = "Translate the following Chinese text to English."
+        lang_instruction = "Translate the following Chinese legal text into English."
     elif direction == "en2cn":
-        lang_instruction = "Translate the following English text to Chinese."
+        lang_instruction = "Translate the following English legal text into Chinese."
     else:
         lang_instruction = (
-            "Translate the following text to the other language "
+            "Translate the following legal text to the other language "
             "(Chinese → English or English → Chinese, whichever applies)."
         )
 
     system_prompt = (
         f"{lang_instruction}\n\n"
-        "CRITICAL RULES:\n"
-        "1. Preserve ALL placeholders like ⟨T0⟩, ⟨T1⟩, ⟨T123⟩ — "
-        "these are special tokens. Keep them EXACTLY as-is at the position "
-        "where they appear. Do NOT translate, modify, split, or remove them.\n"
-        "2. The surrounding text should read as natural, fluent prose in the "
-        "target language. Adjust grammar, word order, prepositions, and "
-        "articles as needed to accommodate where placeholders sit.\n"
-        "3. Preserve paragraph breaks from the original.\n"
-        "4. Output ONLY the translated text. No markdown, no HTML, no "
-        "commentary, no notes, no explanations."
+        "This is a formal legal document (court ruling, contract, brief, or "
+        "notarial certificate). Translate with the register and conventions of "
+        "professional legal drafting.\n\n"
+        "REGISTER & STYLE:\n"
+        "- Use formal legal English: 'shall' for obligations, 'hereby', "
+        "'notwithstanding', 'pursuant to', 'in accordance with', etc.\n"
+        "- Be precise. Do not paraphrase, soften, or add explanatory hedges. "
+        "Keep the sentence structure close to the source when possible.\n"
+        "- For Chinese → English, use standard PRC-legal-English conventions: "
+        "'the People's Republic of China', 'People's Court', 'Civil Procedure Law', "
+        "'Plaintiff'/'Defendant' capitalized when referring to parties in the case.\n"
+        "- For citations, prefer the concise form 'Article 19(3)' over "
+        "'Paragraph 3 of Article 19'. Preserve original article/section numbers exactly.\n\n"
+        "PLACEHOLDERS:\n"
+        "- Special tokens like ⟨T0⟩, ⟨T1⟩, ⟨T123⟩ are pre-translated glossary "
+        "terms. Keep them EXACTLY as written — do not translate, split, alter, "
+        "or drop them.\n"
+        "- Treat each ⟨Tn⟩ as a noun phrase. When a ⟨Tn⟩ sits next to a Latin "
+        "word, insert whitespace so the output reads naturally (write "
+        "'⟨T0⟩ Company', not '⟨T0⟩Company').\n"
+        "- If your own natural translation would already contain the same word "
+        "that a nearby ⟨Tn⟩ expands to (e.g. you're about to write 'jurisdiction' "
+        "and a ⟨Tn⟩ token also carries 'jurisdiction'), drop your redundant word "
+        "so the sentence reads once, not twice.\n\n"
+        "STRUCTURE:\n"
+        "- Preserve paragraph breaks and blank lines.\n"
+        "- Preserve list numbering exactly as it appears (1., I., (1), ①, 一、).\n"
+        "- Preserve inline tables, dates, currency amounts, and identifiers "
+        "(patent numbers, case numbers, credit codes, addresses) verbatim.\n\n"
+        "OUTPUT: Only the translated text. No markdown, no HTML, no commentary, "
+        "no notes, no explanations, no XML tags."
     )
 
     chunks = chunk_text(text)
@@ -645,7 +725,16 @@ if translate_clicked:
         text_to_translate = source_text
 
         if use_glossary:
-            st.write(f"术语表共 **{glossary_data['count']}** 条术语，正在匹配…")
+            cleaned = glossary_data.get("cleaned_count", 0)
+            skipped = glossary_data.get("skipped_count", 0)
+            hygiene_note = (
+                f"（已清洗 {cleaned} 条，跳过 {skipped} 条枚举模板）"
+                if (cleaned or skipped)
+                else ""
+            )
+            st.write(
+                f"术语表共 **{glossary_data['count']}** 条术语{hygiene_note}，正在匹配…"
+            )
             protected_data = protect_terms(source_text, glossary_data, direction)
             text_to_translate = protected_data["protected_text"]
             st.write(
