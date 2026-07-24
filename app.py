@@ -607,6 +607,87 @@ def chunk_text(text: str, max_chars: int = 6000) -> list[str]:
     return chunks if chunks else [""]
 
 
+# ---------------------------------------------------------------------------
+# Output post-processing: style / format fixes applied after model returns
+# ---------------------------------------------------------------------------
+_ROLE_ALT = r"Plaintiff|Defendant|Appellant|Appellee|Petitioner|Respondent|Applicant"
+
+_MD_BOLD_STAR_RE = re.compile(r"\*\*([^*\n]+?)\*\*")
+_MD_BOLD_UNDER_RE = re.compile(r"__([^_\n]+?)__")
+_MD_ITAL_UNDER_RE = re.compile(r"(?<![A-Za-z0-9_])_([^_\n]+?)_(?![A-Za-z0-9_])")
+_MD_ITAL_STAR_RE = re.compile(r"(?<![*A-Za-z0-9])\*([^*\n]+?)\*(?![*A-Za-z0-9])")
+
+_THE_ROLE_RE = re.compile(r"\b[Tt]he (" + _ROLE_ALT + r")(s?)\b")
+_ROLE_SPACE_S_RE = re.compile(r"\b(" + _ROLE_ALT + r") s\b")
+
+# Handles all four surface variants the model emits:
+#   (hereinafter referred to as "Apple")           → ("Apple")
+#   (hereinafter referred to as the "CNIPA")       → (the "CNIPA")
+#   (hereinafter referred to as Sentecke Company)  → ("Sentecke Company")
+#   (hereinafter referred to as the Company)       → (the "Company")
+_HEREIN_RE = re.compile(
+    r'\(hereinafter referred to as (the )?"?([^)"]+?)"?\s*\)'
+)
+
+
+def _herein_sub(m):
+    prefix = m.group(1) or ""
+    return f'({prefix}"{m.group(2).strip()}")'
+
+
+def _to_curly_quotes(text: str) -> str:
+    """Convert ASCII straight quotes to curly quotes.
+
+    Double quotes alternate open/close per line. For single quotes, the
+    typographic rule is: preceded by an alphanumeric char → right single
+    (’) — this covers both apostrophes (Plaintiff's) and closing quotes
+    after a word (no'); preceded by whitespace/punctuation → left single
+    (‘), i.e. an opening quote. No state needed for singles.
+    """
+    out = []
+    double_open = True
+    for i, ch in enumerate(text):
+        if ch == "\n":
+            double_open = True
+            out.append(ch)
+        elif ch == '"':
+            out.append("“" if double_open else "”")
+            double_open = not double_open
+        elif ch == "'":
+            prev = text[i - 1] if i > 0 else ""
+            out.append("’" if prev.isalnum() else "‘")
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def postprocess_translation(text: str) -> str:
+    """Apply style/format fixes to raw model output.
+
+    Order matters:
+    1. Strip markdown emphasis (** _ * markers) — must run before quote
+       conversion, otherwise stray asterisks get quoted in.
+    2. Simplify 'hereinafter referred to as' — while ASCII quotes are intact.
+    3. Fix 'Defendant s' space-plural artifact.
+    4. Drop leading 'the' before role labels (after step 3 so 'the Defendant s'
+       first becomes 'the Defendants' then 'Defendants').
+    5. Convert ASCII straight quotes to curly quotes — must run last so all
+       previous regexes see plain ASCII quotes.
+    """
+    text = _MD_BOLD_STAR_RE.sub(r"\1", text)
+    text = _MD_BOLD_UNDER_RE.sub(r"\1", text)
+    text = _MD_ITAL_UNDER_RE.sub(r"\1", text)
+    text = _MD_ITAL_STAR_RE.sub(r"\1", text)
+
+    text = _HEREIN_RE.sub(_herein_sub, text)
+
+    text = _ROLE_SPACE_S_RE.sub(r"\1s", text)
+    text = _THE_ROLE_RE.sub(r"\1\2", text)
+
+    text = _to_curly_quotes(text)
+    return text
+
+
 def translate_text(
     text: str,
     direction: str,
@@ -636,16 +717,58 @@ def translate_text(
         "This is a formal legal document (court ruling, contract, brief, or "
         "notarial certificate). Translate with the register and conventions of "
         "professional legal drafting.\n\n"
+        "FORMATTING PROHIBITIONS (strict — the output is plain text):\n"
+        "- Do NOT use markdown bold (**...** or __...__).\n"
+        "- Do NOT use markdown italics (*...* or _..._).\n"
+        "- Do NOT use markdown headings (#, ##, ###).\n"
+        "- Do NOT use markdown code fences or inline code (```, `).\n"
+        "- Do NOT use markdown list bullets (-, *, +). Preserve the source's "
+        "own numbering (1., I., (1), ①, 一、) verbatim as ordinary text.\n"
+        "- If the source uses visual emphasis, express it through word choice "
+        "or CAPITALIZATION, never through markdown symbols.\n\n"
         "REGISTER & STYLE:\n"
         "- Use formal legal English: 'shall' for obligations, 'hereby', "
         "'notwithstanding', 'pursuant to', 'in accordance with', etc.\n"
         "- Be precise. Do not paraphrase, soften, or add explanatory hedges. "
         "Keep the sentence structure close to the source when possible.\n"
         "- For Chinese → English, use standard PRC-legal-English conventions: "
-        "'the People's Republic of China', 'People's Court', 'Civil Procedure Law', "
-        "'Plaintiff'/'Defendant' capitalized when referring to parties in the case.\n"
-        "- For citations, prefer the concise form 'Article 19(3)' over "
-        "'Paragraph 3 of Article 19'. Preserve original article/section numbers exactly.\n\n"
+        "'the People's Republic of China', 'People's Court', 'Civil Procedure Law'.\n"
+        "- Use curly quotes (“”‘’) rather than straight quotes.\n\n"
+        "NAMES & PARTY LABELS:\n"
+        "- When transliterating Chinese personal names to Pinyin, UPPERCASE "
+        "the surname (usually the first token). Examples: '张乃倩' → "
+        "'ZHANG Naiqian'; '陈丽美' → 'CHEN Limei'; '蓝世文' → 'LAN Shiwen'. "
+        "Apply this to parties, legal representatives, attorneys, judges, and "
+        "court clerks. Foreign personal names stay as-is.\n"
+        "- Party-role labels (Plaintiff, Defendant, Appellant, Appellee, "
+        "Petitioner, Respondent, Applicant) are used WITHOUT a leading 'the'. "
+        "Write 'Defendant argues that...', 'submitted by Plaintiff', NOT "
+        "'the Defendant argues...' or 'submitted by the Plaintiff'. Capitalize "
+        "them when referring to parties in this case.\n"
+        "- Company abbreviations use the format 'Full Name (\"Abbrev\")' — "
+        "do NOT write 'hereinafter referred to as'. Example: 'Apple Electronics "
+        "Products Commerce (Beijing) Co., Ltd. (\"Apple\")'. Company abbreviations "
+        "take no leading 'the'.\n"
+        "- Non-company term abbreviations use the format 'Full Name (the \"Abbrev\")'. "
+        "Example: 'The China National Intellectual Property Administration "
+        "(the \"CNIPA\")'.\n"
+        "- Translate '本院' and '贵院' (this court / your court) uniformly as "
+        "'the Court' (capital C).\n\n"
+        "HEADINGS:\n"
+        "- Top-level document title: Title Case, on its own line, no trailing period.\n"
+        "- Second-level headings: start with 'I. ', 'II. ', 'III. '; heading text "
+        "in Sentence case (first letter capitalized, rest lowercase except proper "
+        "nouns); NO trailing period.\n"
+        "- Third-level headings: start with '(i). ', '(ii). ', '(iii). '; also "
+        "Sentence case, NO trailing period.\n"
+        "- Never decorate any heading with markdown symbols.\n\n"
+        "CITATIONS:\n"
+        "- '第 X 条第 Y 款第 Z 项' → 'Article X.Y(Z)' (e.g. 'Article 157.1(2)').\n"
+        "- '第 X 条第 Y 款' → 'Article X.Y'.\n"
+        "- '第 X 条' → 'Article X'.\n"
+        "- Preserve the original article/section numbers exactly; do not "
+        "re-number or convert Chinese numerals into anything other than the "
+        "equivalent Arabic numeral in the citation form above.\n\n"
         "PLACEHOLDERS:\n"
         "- Special tokens like ⟨T0⟩, ⟨T1⟩, ⟨T123⟩ are pre-translated glossary "
         "terms. Keep them EXACTLY as written — do not translate, split, alter, "
@@ -659,7 +782,6 @@ def translate_text(
         "so the sentence reads once, not twice.\n\n"
         "STRUCTURE:\n"
         "- Preserve paragraph breaks and blank lines.\n"
-        "- Preserve list numbering exactly as it appears (1., I., (1), ①, 一、).\n"
         "- Preserve inline tables, dates, currency amounts, and identifiers "
         "(patent numbers, case numbers, credit codes, addresses) verbatim.\n\n"
         "OUTPUT: Only the translated text. No markdown, no HTML, no commentary, "
@@ -688,7 +810,7 @@ def translate_text(
         )
         translated_chunks.append(response.choices[0].message.content)
 
-    return "\n".join(translated_chunks)
+    return postprocess_translation("\n".join(translated_chunks))
 
 
 # ---------------------------------------------------------------------------
