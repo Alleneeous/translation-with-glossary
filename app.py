@@ -268,11 +268,11 @@ col_left, col_right = st.columns([5, 4], gap="large")
 
 with col_right:
     st.markdown('<div class="settings-card">', unsafe_allow_html=True)
-    st.markdown("### ⚙️ 翻译设置")
+    st.markdown("### 翻译设置")
 
     _server_key = os.environ.get("DEEPSEEK_API_KEY", "")
     api_key_input = st.text_input(
-        "🔑 DeepSeek API Key",
+        "DeepSeek API Key",
         type="password",
         placeholder="已预填，无需修改" if _server_key else "sk-...",
         help="已从服务器环境变量自动加载。也可填入自己的 Key 覆盖。",
@@ -280,7 +280,7 @@ with col_right:
     effective_key = api_key_input.strip() if api_key_input.strip() else _server_key
 
     direction_label = st.radio(
-        "🌍 翻译方向",
+        "翻译方向",
         options=["自动检测", "中 → 英", "英 → 中"],
         index=0,
         horizontal=True,
@@ -289,31 +289,31 @@ with col_right:
     direction = direction_map[direction_label]
 
     model = st.selectbox(
-        "🤖 翻译模型",
+        "翻译模型",
         options=["deepseek-v4-flash", "deepseek-v4-pro"],
         index=0,
         format_func=lambda m: {
-            "deepseek-v4-flash": "⚡ V4 Flash — 快速便宜，适合日常翻译",
-            "deepseek-v4-pro": "💎 V4 Pro — 旗舰质量，适合正式文档",
+            "deepseek-v4-flash": "V4 Flash — 快速便宜，适合日常翻译",
+            "deepseek-v4-pro": "V4 Pro — 旗舰质量，适合正式文档",
         }.get(m, m),
     )
     st.markdown('</div>', unsafe_allow_html=True)
 
     # Hidden tip
-    st.caption("💡 术语表文件不上传时，内置术语表（210条）将自动使用。")
+    st.caption("术语表文件不上传时，内置术语表（210条）将自动使用。")
 
 with col_left:
     st.markdown('<div class="settings-card">', unsafe_allow_html=True)
-    st.markdown("### 📂 上传文件")
+    st.markdown("### 上传文件")
 
     doc_file = st.file_uploader(
-        "📄 文档（.docx / .pdf）",
+        "文档（.docx / .pdf）",
         type=["docx", "pdf"],
         help="上传待翻译的文档",
     )
 
     glossary_file = st.file_uploader(
-        "📖 术语表（可选 .xlsx）",
+        "术语表（可选 .xlsx）",
         type=["xlsx"],
         help="格式：第一列 = 源语言术语，第二列 = 目标语言翻译。不上传则自动使用内置术语表。",
     )
@@ -321,10 +321,10 @@ with col_left:
     # Show file info after upload
     if doc_file:
         file_size_kb = len(doc_file.getvalue()) / 1024
-        st.caption(f"✅ 已选择：**{doc_file.name}** ({file_size_kb:.1f} KB)")
+        st.caption(f"已选择：**{doc_file.name}** ({file_size_kb:.1f} KB)")
 
     if glossary_file:
-        st.caption(f"📋 自定义术语表：**{glossary_file.name}**")
+        st.caption(f"自定义术语表：**{glossary_file.name}**")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -333,14 +333,14 @@ with col_left:
 
     if not can_translate:
         if doc_file is None:
-            st.info("👆 请上传待翻译的文档开始")
+            st.info("请上传待翻译的文档开始")
         elif not effective_key.strip():
-            st.warning("👉 请在右侧填入 DeepSeek API Key")
+            st.warning("请在右侧填入 DeepSeek API Key")
 
     col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
     with col_btn2:
         translate_clicked = st.button(
-            "🚀 开始翻译",
+            "→ 开始翻译",
             type="primary",
             disabled=not can_translate,
             use_container_width=True,
@@ -464,10 +464,10 @@ def translate_text(
 # ---------------------------------------------------------------------------
 if translate_clicked:
     # --- Step 1: Extract text ---
-    with st.status("📄 提取文档文本…", expanded=True) as status:
+    with st.status("提取文档文本…", expanded=True) as status:
         st.write("正在读取文档…")
         source_text = extract_text(doc_file.getvalue(), doc_file.name)
-        st.write(f"✅ 提取完成，共 **{len(source_text):,}** 字符")
+        st.write(f"提取完成，共 **{len(source_text):,}** 字符")
 
         if not source_text.strip():
             st.error("文档内容为空，请检查文件。")
@@ -477,7 +477,7 @@ if translate_clicked:
         use_glossary = False
         glossary_data = None
         if glossary_file:
-            st.write("📖 加载用户术语表…")
+            st.write("加载用户术语表…")
             with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
                 tmp.write(glossary_file.getvalue())
                 glossary_path = tmp.name
@@ -485,7 +485,7 @@ if translate_clicked:
             os.unlink(glossary_path)
             use_glossary = True
         else:
-            st.write("📖 加载内置术语表…")
+            st.write("加载内置术语表…")
             glossary_data = _decode_embedded_glossary()
             use_glossary = True
 
@@ -493,15 +493,15 @@ if translate_clicked:
         text_to_translate = source_text
 
         if use_glossary:
-            st.write(f"🔍 术语表共 **{glossary_data['count']}** 条术语，正在匹配…")
+            st.write(f"术语表共 **{glossary_data['count']}** 条术语，正在匹配…")
             protected_data = protect_terms(source_text, glossary_data, direction)
             text_to_translate = protected_data["protected_text"]
             st.write(
-                f"✅ 匹配到 **{protected_data['matched_count']}** 条术语，已替换为占位符"
+                f"匹配到 **{protected_data['matched_count']}** 条术语，已替换为占位符"
             )
 
         # --- Step 3: Translate ---
-        status.update(label="🤖 AI 翻译中…", state="running")
+        status.update(label="AI 翻译中…", state="running")
         progress_bar = st.progress(0, text="准备翻译…")
         status_text = st.empty()
 
@@ -518,19 +518,19 @@ if translate_clicked:
 
         # --- Step 4: Restore terms ---
         if protected_data:
-            st.write("🔄 恢复术语…")
+            st.write("恢复术语…")
             final_text = restore_terms(translated, protected_data)
-            st.write(f"✅ 已恢复 **{protected_data['matched_count']}** 条术语")
+            st.write(f"已恢复 **{protected_data['matched_count']}** 条术语")
         else:
             final_text = translated
 
-        progress_bar.progress(1.0, text="✅ 完成！")
+        progress_bar.progress(1.0, text="完成！")
         progress_bar.empty()
         status_text.empty()
 
-        status.update(label="✅ 翻译完成！", state="complete")
+        status.update(label="翻译完成！", state="complete")
 
-        st.toast("🎉 翻译完成！请查看结果并下载译文。", icon="✅")
+        st.toast("翻译完成！请查看结果并下载译文。", icon="✓")
 
         # --- Step 5: Store in session state for persistent display ---
         st.session_state.translation_result = {
@@ -555,25 +555,25 @@ if "translation_result" in st.session_state:
     doc_filename = result["doc_filename"]
 
     st.divider()
-    st.markdown("## 📋 翻译结果")
+    st.markdown("## 翻译结果")
 
     # --- Stats row in cards ---
     stat_col1, stat_col2, stat_col3, stat_col4 = st.columns(4)
     with stat_col1:
-        st.metric("📊 源文字符", f"{len(source_text):,}")
+        st.metric("源文字符", f"{len(source_text):,}")
     with stat_col2:
-        st.metric("📝 译文字符", f"{len(final_text):,}")
+        st.metric("译文字符", f"{len(final_text):,}")
     with stat_col3:
         st.metric(
-            "🌍 翻译方向",
+            "翻译方向",
             {"cn2en": "中→英", "en2cn": "英→中"}.get(direction, direction),
         )
     with stat_col4:
         matched = protected_data["matched_count"] if protected_data else 0
-        st.metric("🏷️ 匹配术语", f"{matched} 条")
+        st.metric("匹配术语", f"{matched} 条")
 
     # --- Tabs ---
-    tab1, tab2, tab3 = st.tabs(["📝 译文预览", "📄 原文对照", "📊 术语详情"])
+    tab1, tab2, tab3 = st.tabs(["译文预览", "原文对照", "术语详情"])
 
     with tab1:
         st.text_area(
@@ -587,7 +587,7 @@ if "translation_result" in st.session_state:
     with tab2:
         col_a, col_b = st.columns(2)
         with col_a:
-            st.caption("**📌 原文**")
+            st.caption("**原文**")
             st.text_area(
                 "原文",
                 value=source_text[:5000]
@@ -597,7 +597,7 @@ if "translation_result" in st.session_state:
                 key="source_preview",
             )
         with col_b:
-            st.caption("**✅ 译文**")
+            st.caption("**译文**")
             st.text_area(
                 "译文",
                 value=final_text[:5000]
@@ -626,7 +626,7 @@ if "translation_result" in st.session_state:
     with col_dl2:
         output_filename = Path(doc_filename).stem + "_translated.txt"
         st.download_button(
-            label="📥 下载译文 (.txt)",
+            label="↓ 下载译文 (.txt)",
             data=final_text.encode("utf-8"),
             file_name=output_filename,
             mime="text/plain",
@@ -636,7 +636,7 @@ if "translation_result" in st.session_state:
 
     # --- Matched terms log (collapsed) ---
     if protected_data:
-        with st.expander("🔍 术语匹配详情"):
+        with st.expander("术语匹配详情"):
             st.json(
                 {
                     "direction": direction,
@@ -654,6 +654,6 @@ if "translation_result" in st.session_state:
 # ---------------------------------------------------------------------------
 st.markdown("""
 <div class="app-footer">
-    术语表辅助翻译工具 · Powered by DeepSeek
+    TransLegal · Powered by DeepSeek
 </div>
 """, unsafe_allow_html=True)
