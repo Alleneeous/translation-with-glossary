@@ -32,7 +32,7 @@ streamlit run app.py
 3. 将 `translate-app/` 目录下所有文件上传到 Space
 4. 在 Space 设置 → **Repository Secrets** 中添加：
    ```
-   DEEPSEEK_API_KEY = "sk-a69211ac354f4024a9d4db06b92327af"
+   DEEPSEEK_API_KEY = "sk-你的DeepSeek-API-Key"
    ```
 5. 获得 URL：`https://huggingface.co/spaces/你的用户名/translate-app`
 6. 发给用户的就是这个 URL
@@ -46,7 +46,7 @@ streamlit run app.py
 3. New app → 选仓库 → 主文件 `app.py`
 4. 在 App 设置 → **Secrets** 中添加：
    ```
-   DEEPSEEK_API_KEY = "sk-a69211ac354f4024a9d4db06b92327af"
+   DEEPSEEK_API_KEY = "sk-你的DeepSeek-API-Key"
    ```
 5. 获得 `https://your-app.streamlit.app`
 
@@ -55,7 +55,7 @@ streamlit run app.py
 ```bash
 cd translate-app
 pip install -r requirements.txt
-export DEEPSEEK_API_KEY="sk-a69211ac354f4024a9d4db06b92327af"
+export DEEPSEEK_API_KEY="sk-你的DeepSeek-API-Key"
 streamlit run app.py --server.port 8501 --server.address 0.0.0.0
 ```
 
