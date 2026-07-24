@@ -39,8 +39,8 @@ def _decode_embedded_glossary():
 # Page config
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="术语表辅助翻译工具",
-    page_icon="🌐",
+    page_title="TransLegal",
+    page_icon="⚖️",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
@@ -51,146 +51,152 @@ st.set_page_config(
 st.markdown("""
 <style>
 /* ===== Global ===== */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
 html, body, [class*="css"] {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
-    color: #1E293B;
+    color: #2D2A26;
 }
 
 /* ===== Hero Banner ===== */
 .hero-banner {
-    background: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #6366F1 100%);
-    padding: 2.5rem 3rem;
-    border-radius: 16px;
-    margin-bottom: 2rem;
+    background: #FFFFFF;
+    padding: 2rem 2.5rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
     text-align: center;
-    box-shadow: 0 4px 24px rgba(30, 64, 175, 0.25);
+    border: 1px solid #EBE7E1;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
 }
 .hero-banner h1 {
-    color: #FFFFFF !important;
-    font-size: 2.4rem;
-    font-weight: 700;
+    color: #2D2A26 !important;
+    font-size: 2.2rem;
+    font-weight: 600;
     margin: 0;
     padding: 0;
+    letter-spacing: -0.02em;
 }
 .hero-banner p {
-    color: rgba(255,255,255,0.9) !important;
-    font-size: 1.1rem;
-    margin: 0.5rem 0 0 0;
+    color: #6B625A !important;
+    font-size: 1.05rem;
+    margin: 0.4rem 0 0 0;
 }
 .steps-row {
     display: flex;
     justify-content: center;
-    gap: 2rem;
-    margin-top: 1.5rem;
+    gap: 1.5rem;
+    margin-top: 1.25rem;
 }
 .step-badge {
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,255,255,0.25);
-    border-radius: 12px;
-    padding: 0.75rem 1.5rem;
-    color: #FFFFFF;
+    background: #FAF8F5;
+    border: 1px solid #EBE7E1;
+    border-radius: 8px;
+    padding: 0.5rem 1.25rem;
+    color: #6B625A;
     font-weight: 500;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
 }
 .step-badge .step-num {
     display: inline-block;
-    width: 26px;
-    height: 26px;
-    line-height: 26px;
+    width: 24px;
+    height: 24px;
+    line-height: 24px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.25);
+    background: #C77D4F;
+    color: #FFFFFF;
     text-align: center;
-    margin-right: 8px;
-    font-weight: 700;
-    font-size: 0.85rem;
+    margin-right: 6px;
+    font-weight: 600;
+    font-size: 0.8rem;
 }
 
 /* ===== Cards ===== */
 .settings-card {
     background: #FFFFFF;
-    border: 1px solid #E2E8F0;
+    border: 1px solid #EBE7E1;
     border-radius: 12px;
     padding: 1.5rem;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
     margin-bottom: 1rem;
 }
 .settings-card h3 {
     margin-top: 0;
-    font-size: 1.1rem;
-    color: #1E40AF;
-    border-bottom: 2px solid #EFF6FF;
+    font-size: 1.05rem;
+    color: #2D2A26;
+    border-bottom: 1px solid #EBE7E1;
     padding-bottom: 0.75rem;
     margin-bottom: 1rem;
+    font-weight: 600;
 }
 
 /* ===== File Uploader Override ===== */
 [data-testid="stFileUploader"] {
-    border: 2px dashed #CBD5E1 !important;
-    border-radius: 12px !important;
-    padding: 1.5rem !important;
-    transition: border-color 0.3s, background 0.3s;
+    border: 2px dashed #D9D2C7 !important;
+    border-radius: 10px !important;
+    padding: 1.25rem !important;
+    transition: border-color 0.2s, background 0.2s;
 }
 [data-testid="stFileUploader"]:hover {
-    border-color: #3B82F6 !important;
-    background: #F8FAFC;
+    border-color: #C77D4F !important;
+    background: #FDFCFB;
 }
 
 /* ===== Buttons ===== */
 .stButton > button {
-    border-radius: 10px !important;
-    font-weight: 600 !important;
-    transition: all 0.3s ease !important;
-    padding: 0.6rem 1.5rem !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    transition: all 0.2s ease !important;
+    padding: 0.5rem 1.25rem !important;
 }
 .stButton > button:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+    box-shadow: 0 2px 8px rgba(199, 125, 79, 0.25);
 }
 
-/* Primary button with gradient */
+/* Primary button */
 .stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #1E40AF, #3B82F6) !important;
-    border: none !important;
+    background: #C77D4F !important;
+    border: 1px solid #B86D3F !important;
     color: #FFFFFF !important;
-    font-size: 1.05rem !important;
+    font-size: 1rem !important;
+}
+.stButton > button[kind="primary"]:hover {
+    background: #B86D3F !important;
 }
 
 /* Download button */
 .stDownloadButton > button {
-    border-radius: 10px !important;
-    font-weight: 600 !important;
-    background: linear-gradient(135deg, #059669, #10B981) !important;
-    border: none !important;
+    border-radius: 8px !important;
+    font-weight: 500 !important;
+    background: #C77D4F !important;
+    border: 1px solid #B86D3F !important;
     color: #FFFFFF !important;
-    transition: all 0.3s ease !important;
+    transition: all 0.2s ease !important;
 }
 
 /* ===== Metrics ===== */
 [data-testid="stMetric"] {
-    background: #F8FAFC;
-    border-radius: 10px;
+    background: #FAF8F5;
+    border-radius: 8px;
     padding: 0.75rem;
-    border: 1px solid #E2E8F0;
+    border: 1px solid #EBE7E1;
 }
 [data-testid="stMetricValue"] {
-    color: #1E40AF !important;
+    color: #C77D4F !important;
 }
 
 /* ===== Text areas ===== */
 .stTextArea textarea {
-    border-radius: 10px !important;
-    border: 1px solid #E2E8F0 !important;
-    background: #FAFBFC;
+    border-radius: 8px !important;
+    border: 1px solid #EBE7E1 !important;
+    background: #FDFCFB;
 }
 
 /* ===== Select / Radio / Input ===== */
 .stSelectbox [data-baseweb="select"] > div,
 .stTextInput input {
     border-radius: 8px !important;
-    border-color: #E2E8F0 !important;
+    border-color: #EBE7E1 !important;
 }
 .stRadio [data-testid="stMarkdownContainer"] p {
     font-weight: 500;
@@ -198,19 +204,19 @@ html, body, [class*="css"] {
 
 /* ===== Progress bar ===== */
 .stProgress > div > div {
-    background: linear-gradient(90deg, #1E40AF, #3B82F6);
+    background: #C77D4F;
     border-radius: 4px;
 }
 
 /* ===== Expander ===== */
 [data-testid="stExpander"] {
-    border-radius: 10px !important;
-    border: 1px solid #E2E8F0 !important;
+    border-radius: 8px !important;
+    border: 1px solid #EBE7E1 !important;
 }
 
 /* ===== Info callout ===== */
 div[data-testid="stNotification"] {
-    border-radius: 10px !important;
+    border-radius: 8px !important;
 }
 
 /* ===== Hide sidebar default ===== */
@@ -221,16 +227,16 @@ div[data-testid="stNotification"] {
 /* ===== Footer ===== */
 .app-footer {
     text-align: center;
-    color: #94A3B8;
+    color: #A39688;
     font-size: 0.85rem;
     padding: 2rem 0 1rem 0;
-    border-top: 1px solid #E2E8F0;
+    border-top: 1px solid #EBE7E1;
     margin-top: 3rem;
 }
 
 /* ===== Tab styling ===== */
 .stTabs [data-baseweb="tab-list"] {
-    gap: 0.5rem;
+    gap: 0.25rem;
 }
 .stTabs [data-baseweb="tab"] {
     border-radius: 8px 8px 0 0;
@@ -245,7 +251,7 @@ div[data-testid="stNotification"] {
 # ---------------------------------------------------------------------------
 st.markdown("""
 <div class="hero-banner">
-    <h1>🌐 术语表辅助翻译工具</h1>
+    <h1>⚖️ TransLegal</h1>
     <p>上传文档 → AI 自动匹配术语并翻译 → 下载术语一致的译文</p>
     <div class="steps-row">
         <div class="step-badge"><span class="step-num">1</span> 上传文档 & 术语表</div>
