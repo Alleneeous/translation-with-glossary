@@ -582,7 +582,7 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
     return clean_extracted_text(text, suffix)
 
 
-def chunk_text(text: str, max_chars: int = 6000) -> list[str]:
+def chunk_text(text: str, max_chars: int = 4000) -> list[str]:
     """Split text into chunks at paragraph boundaries, each ≤ max_chars."""
     paragraphs = text.split("\n")
     chunks = []
