@@ -650,6 +650,25 @@ _OFFERING_PAST_RE = re.compile(
     r"((?:,?\s+(?:and\s+)?))offering for sale\b"
 )
 
+# Glossary-collision dedup: model writes "the place where the ⟨T⟩" but the
+# glossary target already starts with "place where" → "the place where the
+# place where X" → "the place where X"
+_PLACE_WHERE_DUP_RE = re.compile(r"\bthe place where the place where\b")
+
+# Glossary collision: model writes "where the ⟨T⟩ is domiciled" but the
+# glossary target is "defendant's domicile" → "defendant's domicile is
+# domiciled" → "defendant's domicile"
+_DOMICILE_DUP_RE = re.compile(r"\bdefendant's domicile is domiciled\b")
+
+# "is committed occurred" → "is committed"
+_COMMITTED_OCCURRED_RE = re.compile(r"\bis committed occurred\b")
+
+# Grammar: "should be transfer to" → "should be transferred to"
+_TRANSFER_TO_RE = re.compile(r"\bshould be transfer to\b")
+
+# Grammar: "a [vowel]" → "an [vowel]"
+_A_AN_RE = re.compile(r"\ba ([AEIOUaeiou])")
+
 
 def _herein_sub(m):
     prefix = m.group(1) or ""
@@ -732,6 +751,13 @@ def postprocess_translation(text: str) -> str:
     text = _PATENT_NUMBER_NO_RE.sub("patent number ", text)
     # Fix "sold and offering for sale" → "sold and offered for sale"
     text = _OFFERING_PAST_RE.sub(_offering_past_sub, text)
+    # Fix glossary collisions
+    text = _PLACE_WHERE_DUP_RE.sub("the place where", text)
+    text = _DOMICILE_DUP_RE.sub("defendant's domicile", text)
+    text = _COMMITTED_OCCURRED_RE.sub("is committed", text)
+    # Fix common grammar errors
+    text = _TRANSFER_TO_RE.sub("should be transferred to", text)
+    text = _A_AN_RE.sub(r"an \1", text)
 
     text = _to_curly_quotes(text)
     return text
