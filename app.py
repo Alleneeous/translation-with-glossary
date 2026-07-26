@@ -892,11 +892,17 @@ def translate_text(
         )
         result = response.choices[0].message.content
 
-        # Retry once if output is suspiciously short — the model sometimes
-        # skips the middle of a chunk ("lost in the middle" problem).
-        # CN→EN typically expands by 1.5–2×; a ratio < 0.6 suggests truncation.
-        if result and len(chunk) > 500 and len(result) < len(chunk) * 0.6:
-            status_text.text(f"第 {i + 1}/{total_chunks} 段输出异常（长度 {len(result)}/{len(chunk)}），重试…")
+        # Retry once if output is empty or suspiciously short — the model
+        # sometimes skips the middle of a chunk ("lost in the middle").
+        # CN→EN typically expands 1.5–2×; output < 60 % of input → truncation.
+        # Note: `result` may be None or ""; use explicit None-check, not
+        # truthiness, because "" is falsy and would silently skip the retry.
+        result_len = len(result) if result else 0
+        if len(chunk) > 500 and result_len < len(chunk) * 0.6:
+            status_text.text(
+                f"第 {i + 1}/{total_chunks} 段输出异常"
+                f"（{result_len}/{len(chunk)} 字符），重试…"
+            )
             retry = client.chat.completions.create(
                 model=model,
                 messages=[
@@ -906,9 +912,11 @@ def translate_text(
                 max_tokens=8192,
                 temperature=0.5,  # slight variation for retry
             )
-            result = retry.choices[0].message.content
+            retry_result = retry.choices[0].message.content
+            if retry_result:
+                result = retry_result
 
-        translated_chunks.append(result)
+        translated_chunks.append(result or "")
 
     return postprocess_translation("\n".join(translated_chunks))
 
