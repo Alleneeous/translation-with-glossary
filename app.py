@@ -980,6 +980,10 @@ if translate_clicked:
         else:
             final_text = translated
 
+        # Second-pass a/an fix: runs after restore_terms so glossary targets
+        # like "abuse of market dominance" are visible to the vowel check.
+        final_text = _A_AN_RE.sub(r"an \1", final_text)
+
         progress_bar.progress(1.0, text="完成！")
         progress_bar.empty()
         status_text.empty()
