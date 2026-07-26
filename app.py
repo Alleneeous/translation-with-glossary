@@ -582,7 +582,7 @@ def extract_text(file_bytes: bytes, filename: str) -> str:
     return clean_extracted_text(text, suffix)
 
 
-def chunk_text(text: str, max_chars: int = 4000) -> list[str]:
+def chunk_text(text: str, max_chars: int = 3000) -> list[str]:
     """Split text into chunks at paragraph boundaries, each ≤ max_chars."""
     paragraphs = text.split("\n")
     chunks = []
@@ -890,7 +890,25 @@ def translate_text(
             max_tokens=8192,
             temperature=0.3,
         )
-        translated_chunks.append(response.choices[0].message.content)
+        result = response.choices[0].message.content
+
+        # Retry once if output is suspiciously short — the model sometimes
+        # skips the middle of a chunk ("lost in the middle" problem).
+        # CN→EN typically expands by 1.5–2×; a ratio < 0.6 suggests truncation.
+        if result and len(chunk) > 500 and len(result) < len(chunk) * 0.6:
+            status_text.text(f"第 {i + 1}/{total_chunks} 段输出异常（长度 {len(result)}/{len(chunk)}），重试…")
+            retry = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": chunk},
+                ],
+                max_tokens=8192,
+                temperature=0.5,  # slight variation for retry
+            )
+            result = retry.choices[0].message.content
+
+        translated_chunks.append(result)
 
     return postprocess_translation("\n".join(translated_chunks))
 
